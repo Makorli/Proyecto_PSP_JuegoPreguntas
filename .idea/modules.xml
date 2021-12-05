@@ -2,7 +2,9 @@
 <project version="4">
   <component name="ProjectModuleManager">
     <modules>
+      <module fileurl="file://$PROJECT_DIR$/Cliente/Cliente.iml" filepath="$PROJECT_DIR$/Cliente/Cliente.iml" />
       <module fileurl="file://$PROJECT_DIR$/Proyecto_PSP_JuegoPreguntas.iml" filepath="$PROJECT_DIR$/Proyecto_PSP_JuegoPreguntas.iml" />
+      <module fileurl="file://$PROJECT_DIR$/Servidor/Servidor.iml" filepath="$PROJECT_DIR$/Servidor/Servidor.iml" />
     </modules>
   </component>
 </project>
