@@ -1,4 +1,7 @@
+import Model.Jugador;
+
 import java.io.BufferedReader;
+import java.io.IOException;
 import java.io.InputStreamReader;
 import java.util.List;
 import java.util.regex.Matcher;
@@ -48,6 +51,34 @@ public class ClienteController {
             }
         }
         return jugador;
+    }
+
+    /**
+     * Procediemiento que solicita una opcion por pantalla
+     * y lee una respuesta válida.
+     *
+     * @param nopciones numero de opciones que tiene la pregunta
+     * @return numero entre 1 y nopciones o *FIN*
+     */
+    public static String readAnswer(int nopciones){
+        BufferedReader br = new BufferedReader(new InputStreamReader(System.in));
+        Pattern pat = Pattern.compile(
+                String.format("[1-%d]",nopciones)
+        );
+        Matcher mat;
+        String respuesta="";
+        do{
+            System.out.println("*FIN* -->Salir del juego");
+            System.out.println("Opcion: ");
+            try {respuesta = br.readLine();}
+            catch (IOException e) { System.out.println("Error en la lectura");}
+            if (respuesta.equalsIgnoreCase("*FIN*"))
+                return respuesta.toUpperCase();
+            else{
+                mat= pat.matcher(respuesta);
+            }
+        }while (!mat.matches());
+        return respuesta;
     }
 
 }

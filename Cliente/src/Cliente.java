@@ -1,9 +1,14 @@
+import Model.Jugador;
+
 import javax.crypto.*;
 import java.io.*;
 import java.net.Socket;
 import java.net.UnknownHostException;
 import java.security.*;
+import java.util.Arrays;
 import java.util.Scanner;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 public class Cliente {
 
@@ -66,57 +71,89 @@ public class Cliente {
          * más preguntas para el jugador.
          ********************************************************/
 
-        String pregunta = "";
-        String respuesta ="";
-        BufferedReader br = new BufferedReader(new InputStreamReader(System.in));
-        boolean hayMasPreguntas = true;
+        //SELECCION DE NIVEL y CATEGORIA
+        //TODO
 
-        boolean seguirjugando = true;
-        cipher = Cipher.getInstance(SIMCYPHERTYPE);
-        cipher.init(Cipher.ENCRYPT_MODE, simkey);
-        SealedObject seguirJugandoCPHR = new SealedObject(seguirjugando, cipher);
 
-        while (!respuesta.equalsIgnoreCase("*FIN*") && hayMasPreguntas) {
-            //RECIBIMOS UNA PREGUNTA DEL SERVIDOR Y SI QUEDAN MAS
-            pregunta = String.valueOf(ois.readObject());
-            System.out.println("Aqui la pregunta!! " + pregunta);
-            hayMasPreguntas = (boolean) ois.readObject();
+        //RECIBIMOS DEL SERVIDOR
+        // CONFIRMACION DE SI PARTIDA ESTA INICIADA O NO
+        cipher.init(Cipher.DECRYPT_MODE, simkey);
+        SealedObject partidaOKCPHR = (SealedObject) ois.readObject();
+        boolean gameIsAlive = (boolean) partidaOKCPHR.getObject(cipher);
 
-            //LEEMOS RESPUESTA POR PANTALLA
-            respuesta = br.readLine();
+        if (gameIsAlive) {
 
-            if (!respuesta.equalsIgnoreCase("*FIN*")) {
-                //CONTINUAMOS JUGANDO
-                oos.writeObject(seguirJugandoCPHR);
-                //RESPUESTA
-                byte[] mensaje = cipher.doFinal(respuesta.getBytes());
-                oos.writeObject(mensaje);
+            BufferedReader br = new BufferedReader(new InputStreamReader(System.in));
+            String respuesta = "";
 
+            //MENSAJE EN PANTALLA PARA EMPEZAR A JUGAR
+            //ENVIO DE MENSAJE PARA EMPEZAR O ANULAR PARTIDA
+            Pattern pat = Pattern.compile("[S]|[s]|[N]|[n]");
+            Matcher mat;
+            System.out.print("Estamos preparados!...");
+            do {
+                System.out.print("Comenzar Juego? (S/N): ");
+                respuesta = br.readLine();
+                mat = pat.matcher(respuesta);
+            } while (!mat.matches());
+            boolean seguirJugando = !respuesta.equalsIgnoreCase("N");
+            //Enviamos la respuesta "booleana al servidor"
+            cipher = Cipher.getInstance(SIMCYPHERTYPE);
+            cipher.init(Cipher.ENCRYPT_MODE, simkey);
+            SealedObject seguirJugandoCPHR = new SealedObject(seguirJugando, cipher);
+            oos.writeObject(seguirJugandoCPHR);
+
+            if (seguirJugando) {
+                //EMPEZAR LA RECEPCION DE PREGUNTAS Y ENVIO DE RESPUESTAS
+                String pregunta = "";
+                int nOpciones=0;
+
+                while (seguirJugando && gameIsAlive) {
+                    //RECIBIMOS UNA PREGUNTA DEL SERVIDOR
+                    //RECIBIMOS EL NUMERO DE RESPUESTAS POSIBLES
+                    pregunta = String.valueOf(ois.readObject());
+                    nOpciones = ois.readInt();
+
+                    //RECIBIMOS SI LA PARTIDA SIGUE "VIVA" O NO EN EL SERVIDOR
+                    gameIsAlive = (boolean) ois.readObject();
+
+                    //MOSTRAMOS LA PREGUNTA EN PANTALLA LEEMOS Y VALIDAMOS
+                    //RESPUESTA POR TECLADO
+                    System.out.println(pregunta);
+                    respuesta = ClienteController.readAnswer(nOpciones);
+
+                    //INTERPRETAMOS RESPUESTA DADA POR PANTALLA
+                    seguirJugando = (!respuesta.equalsIgnoreCase("*FIN*"));
+
+                    //ENVIAMOS AL SERVIDOR SI SE DESEA CONTINUAR O NO CON LA PARTIDA
+                    seguirJugandoCPHR = new SealedObject(seguirJugando, cipher);
+                    oos.writeObject(seguirJugandoCPHR);
+
+                    if (seguirJugando) {
+                        //CONTINUAMOS JUGANDO ENVIAMOS RESPUESTA A PREGUNTA
+                        byte[] responseCPHR = cipher.doFinal(respuesta.getBytes());
+                        oos.writeObject(responseCPHR);
+                        //RECIBIMOS SI LA RESPUESTA DAD ES CORRECTA O NO DESDE EL SERVIDOR
+                        boolean isCorrecta= ois.readBoolean();
+                        if (isCorrecta)
+                            System.out.println("Respuesta CORRECTA!");
+                        else
+                            System.out.println("Error!, tranquilo no pasa nada.");
+
+                    } else {
+                        //FIN DE JUEGO
+                        //RECIBIMOS ESTADISITICAS DATOS DE JUEGO CIFRADAS
+                        byte[] estatCPHR = (byte[]) ois.readObject();
+                        cipher.init(Cipher.DECRYPT_MODE,simkey);
+                        String estadisticas = new String(cipher.doFinal(estatCPHR));
+                        System.out.println(estadisticas);
+                        System.out.println("\n Vuelve Pronto");
+                    }
+                }
             } else {
-                //FIN DE JUEGO
-                seguirjugando = false;
-                //byte[] sdf = new byte[]{(byte) (seguirjugando ? 1 : 0)};
-                seguirJugandoCPHR = new SealedObject(seguirjugando, cipher);
-                oos.writeObject(seguirJugandoCPHR);
-
-                //RECIBIMOS ESTADISITICAS DATOS DE JUEGO
-                //TODO
-                System.out.println(String.valueOf(ois.readObject()));
+                System.out.println("..Vaya! te tienes que ir. Aio!");
             }
-
-
         }
-
-
-        //Ciframos con la clave simetrica
-        System.out.println("Escribe texto para cifrar con clave publica del servidor");
-        Scanner sc = new Scanner(System.in);
-        String texto = sc.nextLine();
-        cipher = Cipher.getInstance(SIMCYPHERTYPE);
-        cipher.init(Cipher.ENCRYPT_MODE, simkey);
-        //directamente cifrarlo en un array de bytes, y no hacer conversiones a string
-        byte[] mensaje = cipher.doFinal(texto.getBytes());
-        oos.writeObject(mensaje);
 
         oos.close();
         ois.close();

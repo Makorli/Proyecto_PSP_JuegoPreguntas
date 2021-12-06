@@ -1,3 +1,8 @@
+import Game.Model.Pregunta;
+import Game.QuizController;
+import Model.Jugador;
+import Model.Partida;
+
 import javax.crypto.*;
 import javax.crypto.spec.SecretKeySpec;
 import java.io.IOException;
@@ -5,7 +10,6 @@ import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.net.Socket;
 import java.security.*;
-import java.util.Scanner;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -50,7 +54,8 @@ public class Hilo extends Thread {
                     SIMCYPHERTYPE);
 
             //*****************************************+
-            //Apartir de aqui las comunicaciones se realizan con clave Simetrica
+            //Apartir de aqui las comunicaciones se realizan exclusivamente
+            // con clave Simetrica (excepto firma)
             //*****************************************
 
 
@@ -60,7 +65,7 @@ public class Hilo extends Thread {
             SealedObject jugadorCPHR = (SealedObject) ois.readObject();
             Jugador jugador = (Jugador) jugadorCPHR.getObject(cipher);
 
-            System.out.println("Recibido jugador " + jugador.getNick());
+            System.out.println("Registro jugador " + jugador.getNick());
 
             //PREPARAMOS Y FIRMAMOS LAS INSTRUCCIONES (CLAVE PRIVADA ASIM)
             String instrucciones = "Mis instrucciones";
@@ -80,53 +85,88 @@ public class Hilo extends Thread {
              * Las preguntas se envían sin cifrar y las respuestas se reciben cifradas.
              ********************************************************/
 
-            String clientResponse = "";
-            boolean seguirJugando = true;
-            boolean hayMasPreguntas = true;
+            //SELECCION NIVEL Y CATEGORIA
+            //TODO
+            int level = 1; //Nivel facil
+            int categoria = 0; //Categoria (Todas)
 
-            while (seguirJugando && hayMasPreguntas) {
+            //INICIALIZAR PARTIDA
+            //ENVIAMOS ESTADO AL CLIENTE
+            //ENVIAMOS MENSAJE DE CONFIRMACION PARA INICAR EL JUEGO
+            Partida partida = new Partida(jugador, 1, 0);
+            cipher = Cipher.getInstance(SIMCYPHERTYPE);
+            cipher.init(Cipher.ENCRYPT_MODE, simKey);
+            boolean gameIsAlive = partida.isAlive();
+            oos.writeObject(new SealedObject(gameIsAlive, cipher));
 
-                //ENVIAMOS PREGUNTA AL CLIENTE y SI QUEDAN MAS PREGUNTAS
-                oos.writeObject("Aqui mandamos una pregunta del juego");
-                //TODO modificacion variable hayMasPreguntas
-                //oos.writeBoolean(hayMasPreguntas);
-                oos.writeObject(hayMasPreguntas);
+            if (gameIsAlive) {
 
-
-                //RECIBIMOS RESPUESTAS DEL CLIENTE Y LAS DESENCRIPTAMOS
+                //RECIBIMOS CONFIRMACION DEL CLIENTE PARA COMENZAR EL JUEGO
                 cipher.init(Cipher.DECRYPT_MODE, simKey);
-                SealedObject seguirJugandoCPHR = (SealedObject) ois.readObject();
-                seguirJugando = (boolean) seguirJugandoCPHR.getObject(cipher);
+                SealedObject clientReadyCPHR = (SealedObject) ois.readObject();
+                boolean seguirJugando = (boolean) clientReadyCPHR.getObject(cipher);
 
                 if (seguirJugando) {
-                    byte[] respuesta = (byte[]) ois.readObject();
-                    String mensaje_descifrado = new String(cipher.doFinal(respuesta));
+                    //EMPEZAR EL ENVIO DE PREGUNTAS Y REPCION DE RESPUESTAS
+                    String clientResponse = "";
 
-                    System.out.println(mensaje_descifrado);
+                    while (seguirJugando && gameIsAlive) {
+
+                        //ENVIAMOS PREGUNTA AL CLIENTE
+                        //ENVIAMOS EL NUMERO DE RESPUESTAS POSIBLES
+                        Pregunta pregunta = partida.getNewPregunta();
+                        oos.writeObject(
+                                QuizController.getQuestionMessage(pregunta)
+                        );
+                        oos.writeInt(pregunta.getOpciones().size());
+
+                        // CONTROLAMOS E INFORMAMOS AL CLIENTE SOBRE EL ESTADO DE LA PARTIDA
+                        gameIsAlive = partida.isAlive();
+                        oos.writeObject(gameIsAlive);
+
+                        //RECIBIMOS RESPUESTAS DEL CLIENTE Y LAS DESENCRIPTAMOS
+                        cipher.init(Cipher.DECRYPT_MODE, simKey);
+                        SealedObject seguirJugandoCPHR = (SealedObject) ois.readObject();
+                        seguirJugando = (boolean) seguirJugandoCPHR.getObject(cipher);
+
+                        if (seguirJugando) {
+                            //CONTINUAR JUGANDO RECIBIMOS REPUESTA A PREGUNTA
+                            byte[] responseCPHR = (byte[]) ois.readObject();
+                            String respuesta = new String(cipher.doFinal(responseCPHR));
+
+                            //Tratamos la respuesta en la partida.
+                            boolean isCorrecta;
+                            isCorrecta = partida.responder(
+                                    pregunta,
+                                    pregunta.getOpciones()
+                                            .get(Integer.parseInt(respuesta)-1)
+                                            .getDescripcion());
+
+                            //ENVIAMOS AL CLIENTE SI HA ACERTADO O NO LA RESPUESTA
+                            oos.writeBoolean(isCorrecta);
+
+                        } else {
+                            //FIN DE JUEGO
+                            //ENVIAMOS RESULTADO PUNTUACION AL CLIENTE (CIFRADAS)
+                            cipher.init(Cipher.ENCRYPT_MODE,simKey);
+                            byte[] estatCPHR = cipher.doFinal(
+                                    partida.getEstatisdisticas().getBytes()
+                            );
+                            oos.writeObject(estatCPHR);
+                        }
+                    }
+                } else {
+                    System.out.println("Jugador ha rechaza inicio de partida");
                 }
-                else {
-                    //ENVIAMOS RESULTADO PUNTUACION AL CLIENTE
-                    //TODO
-                    oos.writeObject("EStadisticas....");
-                }
+            } else {
+                System.out.println("No se han podido cargar preguntas" +
+                        "\nVerificar el repositorio y carga de prguntas.");
             }
-
-
-            //RECIBIMOS RESPUESTA DEL CLIENTE Y LA DESENCIRPTAMOS
-            byte[] mensaje = (byte[]) ois.readObject();
-
-            cipher = Cipher.getInstance(SIMCYPHERTYPE);
-            cipher.init(Cipher.DECRYPT_MODE, simKey);
-
-            String mensaje_descifrado = new String(cipher.doFinal(mensaje));
-
-
-            System.out.println("Mensaje descifrado con clave privada: " + mensaje_descifrado);
 
             oos.close();
             ois.close();
             c.close();
-            System.out.println("Cerrada la sesion de juego");
+            System.out.printf("%s <--Cerrada la sesion de juego",jugador.getNick());
 
         } catch (NoSuchAlgorithmException ex) {
             Logger.getLogger(Hilo.class.getName()).log(Level.SEVERE, null, ex);
