@@ -1,4 +1,6 @@
-import Game.QuizController;
+import Game.Controller.QuizController;
+import Game.Controller.QuizLoader;
+import Game.GameThread;
 
 import javax.crypto.BadPaddingException;
 import javax.crypto.IllegalBlockSizeException;
@@ -8,23 +10,34 @@ import java.net.ServerSocket;
 import java.net.Socket;
 import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
+import java.util.logging.Level;
+import java.util.logging.LogManager;
+import java.util.logging.Logger;
 
 //-> https://github.com/misabnll/Trivia-mec/blob/master/todocont_triviamec.sql
 
 public class ServerMain {
 
+    public final static String ficheroDatosQuiz= "Servidor/src/Game/DataRepo/QuizData.xlsx";
+
     public static void main(String[] args) throws NoSuchAlgorithmException, IOException, ClassNotFoundException, NoSuchPaddingException, InvalidKeyException, IllegalBlockSizeException, BadPaddingException {
+
+        ///////////////////////////////////////////////
+        LogManager.getLogManager().reset();
+        Logger globalLogger = Logger.getLogger(Logger.GLOBAL_LOGGER_NAME);
+        globalLogger.setLevel(Level.OFF);
+        ///////////////////////////////////////////////
 
         ServerSocket s;
         Socket c;
         s = new ServerSocket(5000);
         try {
-            QuizController.initDataRepo();
+            QuizLoader.loadAll(ficheroDatosQuiz);
             System.out.println("Servidor iniciado correctamente.... listo para recibir locos por el conocimiento!");
             while (true) {
                 c = s.accept(); //esperando cliente
-                Hilo hilo = new Hilo(c);
-                hilo.start();
+                GameThread gameThread = new GameThread(c);
+                gameThread.start();
             }
         } catch (IOException e ){
             System.out.println("Error en la carga de datos del servidor");

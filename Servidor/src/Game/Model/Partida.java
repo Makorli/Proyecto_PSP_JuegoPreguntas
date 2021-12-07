@@ -1,8 +1,7 @@
-package Model;
+package Game.Model;
 
-import Game.Model.Pregunta;
-import Game.QuizDataRepo;
-import Game.QuizController;
+import Game.DataRepo.QuizDataRepo;
+import Game.Controller.QuizController;
 
 import java.util.*;
 

@@ -1,4 +1,4 @@
-package Game;
+package Game.DataRepo;
 
 import Game.Model.Pregunta;
 import Game.Model.Respuesta;

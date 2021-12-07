@@ -1,4 +1,6 @@
-import Model.Jugador;
+package Game.Controller;
+
+import Game.Model.Jugador;
 
 import java.io.BufferedReader;
 import java.io.IOException;
