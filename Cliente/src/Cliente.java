@@ -72,7 +72,7 @@ public class Cliente {
          ********************************************************/
 
         //SELECCION DE NIVEL y CATEGORIA
-        //TODO
+        //TODO SELECCION NIVEL Y CATEGORIA EN CLIENTE
 
 
         //RECIBIMOS DEL SERVIDOR
@@ -112,17 +112,16 @@ public class Cliente {
                     //RECIBIMOS UNA PREGUNTA DEL SERVIDOR
                     //RECIBIMOS EL NUMERO DE RESPUESTAS POSIBLES
                     pregunta = String.valueOf(ois.readObject());
-                    nOpciones = ois.readInt();
-
-                    //RECIBIMOS SI LA PARTIDA SIGUE "VIVA" O NO EN EL SERVIDOR
-                    gameIsAlive = (boolean) ois.readObject();
+                    System.out.println("REcibiendo opciones");
+                    nOpciones= (int) ois.readObject();
 
                     //MOSTRAMOS LA PREGUNTA EN PANTALLA LEEMOS Y VALIDAMOS
                     //RESPUESTA POR TECLADO
                     System.out.println(pregunta);
                     respuesta = ClienteController.readAnswer(nOpciones);
 
-                    //INTERPRETAMOS RESPUESTA DADA POR PANTALLA
+                    //INTERPRETAMOS RESPUESTA DE JUGADOR INTRODUCIDA POR TECLADO
+                    // SI EL JUGADOR QUIERE SEGUIR JUGANDO O NO
                     seguirJugando = (!respuesta.equalsIgnoreCase("*FIN*"));
 
                     //ENVIAMOS AL SERVIDOR SI SE DESEA CONTINUAR O NO CON LA PARTIDA
@@ -133,23 +132,31 @@ public class Cliente {
                         //CONTINUAMOS JUGANDO ENVIAMOS RESPUESTA A PREGUNTA
                         byte[] responseCPHR = cipher.doFinal(respuesta.getBytes());
                         oos.writeObject(responseCPHR);
-                        //RECIBIMOS SI LA RESPUESTA DAD ES CORRECTA O NO DESDE EL SERVIDOR
+
+                        //RECIBIMOS SI LA RESPUESTA DADA ES CORRECTA O NO DESDE EL SERVIDOR
                         boolean isCorrecta= ois.readBoolean();
                         if (isCorrecta)
                             System.out.println("Respuesta CORRECTA!");
                         else
                             System.out.println("Error!, tranquilo no pasa nada.");
 
+                        //RECIBIMOS DEL SERVIDOR ESTADO DE LA PARTIDA (gameIsAlive)
+                        gameIsAlive = ois.readBoolean();
+
+                        if (!gameIsAlive) //Te has pasado el juego!
+                            System.out.println("No hay más preguntas, has acabado con todas!");
+
                     } else {
-                        //FIN DE JUEGO
-                        //RECIBIMOS ESTADISITICAS DATOS DE JUEGO CIFRADAS
-                        byte[] estatCPHR = (byte[]) ois.readObject();
-                        cipher.init(Cipher.DECRYPT_MODE,simkey);
-                        String estadisticas = new String(cipher.doFinal(estatCPHR));
-                        System.out.println(estadisticas);
-                        System.out.println("\n Vuelve Pronto");
+                        //FIN DE JUEGO, JUGADOR ABANDONA LA PARTIDA
+                        System.out.println("Cancelada partida en curso, otra vez acabarás...");
                     }
                 }
+                //RECIBIMOS ESTADISITICAS DATOS DE JUEGO CIFRADAS
+                byte[] estatCPHR = (byte[]) ois.readObject();
+                cipher.init(Cipher.DECRYPT_MODE,simkey);
+                String estadisticas = new String(cipher.doFinal(estatCPHR));
+                System.out.println(estadisticas);
+                System.out.println("Vuelve Pronto!..si te atreves");
             } else {
                 System.out.println("..Vaya! te tienes que ir. Aio!");
             }

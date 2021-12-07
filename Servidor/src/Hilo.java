@@ -10,6 +10,8 @@ import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.net.Socket;
 import java.security.*;
+import java.util.Collection;
+import java.util.Collections;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -86,14 +88,14 @@ public class Hilo extends Thread {
              ********************************************************/
 
             //SELECCION NIVEL Y CATEGORIA
-            //TODO
-            int level = 1; //Nivel facil
+            //TODO SELECCION NIVEL Y CATEGORIA EN SERVIDOR
+            int level = 4; //(1,2,3,4)
             int categoria = 0; //Categoria (Todas)
 
             //INICIALIZAR PARTIDA
             //ENVIAMOS ESTADO AL CLIENTE
             //ENVIAMOS MENSAJE DE CONFIRMACION PARA INICAR EL JUEGO
-            Partida partida = new Partida(jugador, 1, 0);
+            Partida partida = new Partida(jugador, level, categoria);
             cipher = Cipher.getInstance(SIMCYPHERTYPE);
             cipher.init(Cipher.ENCRYPT_MODE, simKey);
             boolean gameIsAlive = partida.isAlive();
@@ -112,25 +114,28 @@ public class Hilo extends Thread {
 
                     while (seguirJugando && gameIsAlive) {
 
+                        //Cogemos una pregunta de la partida del jugador
+                        // TODO BARAJAR RESPUESTAS (para evitar siempre el mismo orden)
+                        Pregunta pregunta = partida.getNewPregunta();
+                        //Collections.shuffle(pregunta.getOpciones());
+
                         //ENVIAMOS PREGUNTA AL CLIENTE
                         //ENVIAMOS EL NUMERO DE RESPUESTAS POSIBLES
-                        Pregunta pregunta = partida.getNewPregunta();
+
                         oos.writeObject(
                                 QuizController.getQuestionMessage(pregunta)
                         );
-                        oos.writeInt(pregunta.getOpciones().size());
+                        //SE envia un int como objeto porque si no falla..
+                        oos.writeObject(pregunta.getOpciones().size());
 
-                        // CONTROLAMOS E INFORMAMOS AL CLIENTE SOBRE EL ESTADO DE LA PARTIDA
-                        gameIsAlive = partida.isAlive();
-                        oos.writeObject(gameIsAlive);
-
-                        //RECIBIMOS RESPUESTAS DEL CLIENTE Y LAS DESENCRIPTAMOS
+                        //RECIBIMOS SI EL JUGADOR CONTINUA JUGANDO O NO
                         cipher.init(Cipher.DECRYPT_MODE, simKey);
                         SealedObject seguirJugandoCPHR = (SealedObject) ois.readObject();
                         seguirJugando = (boolean) seguirJugandoCPHR.getObject(cipher);
 
+                        //SI EL JUGADOR HA RESPONDIDO !=*FIN*
                         if (seguirJugando) {
-                            //CONTINUAR JUGANDO RECIBIMOS REPUESTA A PREGUNTA
+                            //RECIBIMOS REPUESTA A PREGUNTA REALIZADA
                             byte[] responseCPHR = (byte[]) ois.readObject();
                             String respuesta = new String(cipher.doFinal(responseCPHR));
 
@@ -139,22 +144,31 @@ public class Hilo extends Thread {
                             isCorrecta = partida.responder(
                                     pregunta,
                                     pregunta.getOpciones()
-                                            .get(Integer.parseInt(respuesta)-1)
+                                            .get(Integer.parseInt(respuesta) - 1)
                                             .getDescripcion());
 
                             //ENVIAMOS AL CLIENTE SI HA ACERTADO O NO LA RESPUESTA
                             oos.writeBoolean(isCorrecta);
 
+                            //ACTUALIZAMOS EL ESTADO DE LA PARTIDA (gameIsAlive)
+                            //INFORMAMOS AL CLIENTE SOBRE EL ESTADO DE LA PARTIDA
+                            gameIsAlive = partida.isAlive();
+                            oos.writeBoolean(gameIsAlive);
+                            if (!gameIsAlive) //Finalizada partida, no hay más pregutnas.
+                                System.out.printf("Jugador %s ha respondido todas la preguntas.\n",jugador.getNick());
+
                         } else {
-                            //FIN DE JUEGO
-                            //ENVIAMOS RESULTADO PUNTUACION AL CLIENTE (CIFRADAS)
-                            cipher.init(Cipher.ENCRYPT_MODE,simKey);
-                            byte[] estatCPHR = cipher.doFinal(
-                                    partida.getEstatisdisticas().getBytes()
-                            );
-                            oos.writeObject(estatCPHR);
+                            //FIN DE JUEGO CLIENTE ABANDONA PARTIDA COMENZADA
+                            System.out.printf("Jugador %s abandona partida.\n",jugador.getNick());
                         }
                     }
+                    //FIN DE JUEGO, ENVIAMOS ESTADISTICAS AL CLIENTE ( CIFRADAS)
+                    System.out.printf("Enviando estadísticas a %S\n",jugador.getNick());
+                    cipher.init(Cipher.ENCRYPT_MODE, simKey);
+                    byte[] estatCPHR = cipher.doFinal(
+                            partida.getEstatisdisticas().getBytes()
+                    );
+                    oos.writeObject(estatCPHR);
                 } else {
                     System.out.println("Jugador ha rechaza inicio de partida");
                 }
@@ -163,10 +177,11 @@ public class Hilo extends Thread {
                         "\nVerificar el repositorio y carga de prguntas.");
             }
 
+            //CERRAMOS FLUJOS DE DATOS  Y SOCKET
             oos.close();
             ois.close();
             c.close();
-            System.out.printf("%s <--Cerrada la sesion de juego",jugador.getNick());
+            System.out.printf("Cerrada la sesion de juego con %S\n", jugador.getNick());
 
         } catch (NoSuchAlgorithmException ex) {
             Logger.getLogger(Hilo.class.getName()).log(Level.SEVERE, null, ex);

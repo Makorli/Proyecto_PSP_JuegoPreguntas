@@ -29,8 +29,8 @@ public class Jugador implements Serializable {
         );
         validaciones.add(new Validacion(
                 "edad",
-                "Números enteros no negativos.",
-                Pattern.compile("(\\d)[1-9]"))
+                "Números enteros no negativos <100.",
+                Pattern.compile("(\\d)[0-9]"))
         );
         validaciones.add(new Validacion(
                 "nick",

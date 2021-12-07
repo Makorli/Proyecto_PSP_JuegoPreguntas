@@ -69,7 +69,7 @@ public class ClienteController {
         String respuesta="";
         do{
             System.out.println("*FIN* -->Salir del juego");
-            System.out.println("Opcion: ");
+            System.out.print("Opcion: ");
             try {respuesta = br.readLine();}
             catch (IOException e) { System.out.println("Error en la lectura");}
             if (respuesta.equalsIgnoreCase("*FIN*"))
