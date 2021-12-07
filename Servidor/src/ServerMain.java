@@ -1,4 +1,3 @@
-import Game.Controller.QuizController;
 import Game.Controller.QuizLoader;
 import Game.GameThread;
 
@@ -19,6 +18,7 @@ import java.util.logging.Logger;
 public class ServerMain {
 
     public final static String ficheroDatosQuiz= "Servidor/src/Game/DataRepo/QuizData.xlsx";
+    public final static int PORT=5000;
 
     public static void main(String[] args) throws NoSuchAlgorithmException, IOException, ClassNotFoundException, NoSuchPaddingException, InvalidKeyException, IllegalBlockSizeException, BadPaddingException {
 
@@ -30,7 +30,7 @@ public class ServerMain {
 
         ServerSocket s;
         Socket c;
-        s = new ServerSocket(5000);
+        s = new ServerSocket(PORT);
         try {
             QuizLoader.loadAll(ficheroDatosQuiz);
             System.out.println("Servidor iniciado correctamente.... listo para recibir locos por el conocimiento!");

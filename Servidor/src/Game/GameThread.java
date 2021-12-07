@@ -1,6 +1,5 @@
 package Game;
 
-import Game.Controller.LogController;
 import Game.Model.Pregunta;
 import Game.Controller.QuizController;
 import Game.Model.Jugador;
@@ -72,8 +71,7 @@ public class GameThread extends Thread {
             cipher = Cipher.getInstance(SIMCYPHERTYPE);
             cipher.init(Cipher.DECRYPT_MODE, simKey);
             SealedObject jugadorCPHR = (SealedObject) ois.readObject();
-            Object o = (Object)jugadorCPHR.getObject(cipher);
-            Jugador jugador = (Jugador) o;
+            Jugador jugador = (Jugador) jugadorCPHR.getObject(cipher);
 
             System.out.println("Registro jugador " + jugador.getNick());
 

@@ -3,6 +3,8 @@ import Game.Model.Jugador;
 
 import javax.crypto.*;
 import java.io.*;
+import java.net.InetAddress;
+import java.net.InetSocketAddress;
 import java.net.Socket;
 import java.net.UnknownHostException;
 import java.security.*;
@@ -11,15 +13,16 @@ import java.util.regex.Pattern;
 
 public class ClienteMain {
 
+    private final static String myServer = "127.0.0.1";
     private final static int PORT = 5000;
     private final static String ASIMCYPHERTYPE = "RSA";
     private final static String SIMCYPHERTYPE = "DES";
     private final static String SIGNATURETYPE = "SHA1WITHRSA";
-    private Cipher cipher;
 
     public static void main(String[] args) throws UnknownHostException, IOException, ClassNotFoundException, NoSuchAlgorithmException, NoSuchPaddingException, InvalidKeyException, IllegalBlockSizeException, BadPaddingException, SignatureException {
         //Conectamos al cliente
-        Socket socket = new Socket("localhost", PORT);
+        Socket socket = new Socket(myServer, PORT);
+
         // Creamos los flujos
         ObjectOutputStream oos = new ObjectOutputStream(socket.getOutputStream());
         ObjectInputStream ois = new ObjectInputStream(socket.getInputStream());
@@ -63,12 +66,12 @@ public class ClienteMain {
         if (check) System.out.println("Las instrucciones son autenticas y podemos empezar a jugar...");
         else System.out.println("FIRMA NO VERIFICADA: Instrucciones recibidas manipuladas");
 
-        /**********************************************************
-         * COMENZAMOS A JUGAR
-         * Recibiremos preguntas hasta que el jugador decida salir
-         * escribiendo *FIN* en una respuesta o el servidor no tenga
-         * más preguntas para el jugador.
-         ********************************************************/
+        //**********************************************************
+         //* COMENZAMOS A JUGAR
+         //* Recibiremos preguntas hasta que el jugador decida salir
+         //* escribiendo *FIN* en una respuesta o el servidor no tenga
+         /* más preguntas para el jugador.
+         //********************************************************/
 
         //SELECCION DE NIVEL y CATEGORIA
         //TODO SELECCION NIVEL Y CATEGORIA EN CLIENTE
@@ -83,7 +86,7 @@ public class ClienteMain {
         if (gameIsAlive) {
 
             BufferedReader br = new BufferedReader(new InputStreamReader(System.in));
-            String respuesta = "";
+            String respuesta;
 
             //MENSAJE EN PANTALLA PARA EMPEZAR A JUGAR
             //ENVIO DE MENSAJE PARA EMPEZAR O ANULAR PARTIDA
@@ -104,8 +107,8 @@ public class ClienteMain {
 
             if (seguirJugando) {
                 //EMPEZAR LA RECEPCION DE PREGUNTAS Y ENVIO DE RESPUESTAS
-                String pregunta = "";
-                int nOpciones=0;
+                String pregunta;
+                int nOpciones;
 
                 while (seguirJugando && gameIsAlive) {
                     //RECIBIMOS UNA PREGUNTA DEL SERVIDOR
