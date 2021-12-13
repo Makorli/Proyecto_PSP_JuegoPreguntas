@@ -21,6 +21,8 @@ public class ClienteMain {
 
     public static void main(String[] args) throws UnknownHostException, IOException, ClassNotFoundException, NoSuchAlgorithmException, NoSuchPaddingException, InvalidKeyException, IllegalBlockSizeException, BadPaddingException, SignatureException {
         //Conectamos al cliente
+        System.setProperty("javax.net.ssl.trustStore", "Cliente/src/Certs/ClienteAlmacenSSL.jks");
+        System.setProperty("javax.net.ssl.trustStorePassword", "123456");
         Socket socket = new Socket(myServer, PORT);
 
         // Creamos los flujos

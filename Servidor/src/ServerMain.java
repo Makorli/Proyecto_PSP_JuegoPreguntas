@@ -22,6 +22,10 @@ public class ServerMain {
 
     public static void main(String[] args) throws NoSuchAlgorithmException, IOException, ClassNotFoundException, NoSuchPaddingException, InvalidKeyException, IllegalBlockSizeException, BadPaddingException {
 
+        //SEGURIDAD SSL
+        System.setProperty("javax.net.ssl.keyStore","Servidor/Certs/AlmacenSSL.jks");
+        System.setProperty("javax.net.ssl.keyStorePassword","123456");
+
         ///////////////////////////////////////////////
         LogManager.getLogManager().reset();
         Logger globalLogger = Logger.getLogger(Logger.GLOBAL_LOGGER_NAME);
